@@ -13,31 +13,45 @@ use strict;
 sub get_config {
 	return (
 		log_file => 'access.log',
+		chart_char => '*',
 	);	
 }
 
 # main body of script
 sub main {
 	my %conf = &get_config();
-	my %cookies = {};   # keys are different cookies
+	my %cookies;   # keys are different cookies
 	my @log = &get_log_contents($conf{'log_file'});
+
 	# go through each entry in log and do stuff
 	foreach my $entry (@log) {
 		next if ($entry =~ /^$/);   # skip blank lines
+
 		my @log_entry = &split_log_entry($entry);   # split log entry into each chunk 
-		#print join(' | ', @log_entry), "\n\n";
+		my ($date, $time) = split(/:/, $log_entry[3], 2);
 		my $cookie = $log_entry[$#log_entry];   # cookie is last chunk in log entry
 
-		$cookies{$cookie}{num}++;   # count cookie instances
-		#print "$cookie:  ";
-		#print "$cookies{$cookie}{num}\n\n";
+		$cookies{$date}{$cookie}{num}++;   # count cookie instances
 	}
 
-	my @cookie_keys = keys %cookies;
-	foreach my $cookie (@cookie_keys) {
-		next unless ($cookies{$cookie}{num});
-		print "cookie: $cookie, apeared $cookies{$cookie}{num} times\n";
+	my @dates = keys %cookies;
+	#my @dates = &order_dates(keys %cookies);
+
+	foreach my $date (@dates) {
+		my @cookie_keys = keys %{ $cookies{$date} };
+		#print join("\n", @cookie_keys), "\n";
+		foreach my $cookie (@cookie_keys) {
+			next unless ($cookies{$date}{$cookie}{num});
+			#print "cookie: $cookie, apeared $cookies{$date}{$cookie}{num} times\n";
+		}
+		#print "total: ", $#cookie_keys + 1, " unique visitors on $date\n\n";
+		print "$date: ", $#cookie_keys + 1, " ";
+		for (my $c = 0; $c <= $#cookie_keys + 1; $c++) {
+			print $conf{chart_char};
+		}
+		print "\n";
 	}
+
 }
 
 
@@ -51,6 +65,7 @@ sub split_log_entry {
 
 	my @work = split(//, $line);
 
+	# character by character parser to split log data into proper chunks
 	foreach my $char (@work) {
 		unless ($dlm) {
 			$char =~ s/ /|/g;
@@ -77,7 +92,6 @@ sub split_log_entry {
 	$dlm_line =~ s/\|$//g;
 	$dlm_line =~ s/^\|//g;
 	return ( split(/\|/, $dlm_line) );	
-
 }
 
 # open specified log file and return array of the logs data in lines.
@@ -87,5 +101,36 @@ sub get_log_contents {
 	my @tmp = <LOG>;
 	close LOG;
 	return @tmp;
+}
+
+# take a group of dates in an expected format (DD/MM/YYYY)
+# and return the group ordered from oldest to most recent.
+sub order_dates {
+	my @dates = @_;
+	foreach my $date (@dates) {
+		my ($day, $month, $year) = $date;
+		unless ($month =~ /^\d{2}$/) {
+			$month = &convert_month($month);	
+		}
+	}
+}
+
+# converts the standard 3 letter abreviation for the month into its 
+# numerical equivelant
+sub convert_month {
+        my $month = shift;
+        if      ($month =~ /^Jan$/)     { $month = '01'; }      
+        elsif   ($month =~ /^Feb$/)     { $month = '02'; }      
+        elsif   ($month =~ /^Mar$/)     { $month = '03'; }      
+        elsif   ($month =~ /^Apr$/)     { $month = '04'; }      
+        elsif   ($month =~ /^May$/)     { $month = '05'; }      
+        elsif   ($month =~ /^Jun$/)     { $month = '06'; }      
+        elsif   ($month =~ /^Jul$/)     { $month = '07'; }      
+        elsif   ($month =~ /^Aug$/)     { $month = '08'; }      
+        elsif   ($month =~ /^Sep$/)     { $month = '09'; }      
+        elsif   ($month =~ /^Oct$/)     { $month = '10'; }      
+        elsif   ($month =~ /^Nov$/)     { $month = '11'; }      
+        elsif   ($month =~ /^Dec$/)     { $month = '12'; }      
+        return ($month);
 }
 
