@@ -47,10 +47,31 @@ sub main {
 
 
 	my %months;  # key is month, value is total cookies
+	my @dates = &sort_dates('/', keys %cookies);
+	foreach my $date (@dates) {
+		my ($junk, $month) = split(/\//, $date, 2);
+		my @times = sort (keys %{ $cookies{$date} } );
+		my $daily_total = 0;
+		foreach my $time (@times) {
+			my @cookie_keys = keys %{ $cookies{$date}{$time} };
+			$daily_total = $#cookie_keys + 1 + $daily_total;
+		}
+		# add daily total to monthly total
+		$months{$month} += $daily_total;
+	}
+
+	print "\n";
+	print " month     # of unique visitors\n";
+	print " -----     --------------------\n";
+	my @sort_months = &sort_months('/', keys %months);
+	foreach my $month (@sort_months) {
+		next unless ($months{$month});
+		print "$month : $months{$month}\n";
+	}
+
 	print "\n";
 	print "   day        # of unique visitors\n";
 	print "   ---        --------------------\n";
-	my @dates = &sort_dates('/', keys %cookies);
 	foreach my $date (@dates) {
 		my ($junk, $month) = split(/\//, $date, 2);
 		print "$date : "; 
@@ -62,8 +83,6 @@ sub main {
 		}
 
 		print "$daily_total\t";
-		# add daily total to monthly total
-		$months{$month} += $daily_total;
 
 		foreach my $time (@times) {
 			my @cookie_keys = keys %{ $cookies{$date}{$time} };
@@ -91,15 +110,6 @@ sub main {
 			}
 			print "\n";
 		}
-	}
-
-	print "\n";
-	print " month     # of unique visitors\n";
-	print " -----     --------------------\n";
-	my @sort_months = &sort_months('/', keys %months);
-	foreach my $month (@sort_months) {
-		next unless ($months{$month});
-		print "$month : $months{$month}\n";
 	}
 
 	print "\n";
