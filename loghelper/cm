@@ -15,7 +15,7 @@ sub get_config {
 		log_file => 'access.log',
 		chart_char => '*',
 		hist_file => 'cm.hist', 
-		show_data => 'date time',
+		show_data => 'date hour',
 	);	
 }
 
@@ -33,19 +33,20 @@ sub main {
 		my ($date, $time) = split(/:/, $log_entry[3], 2);
 		my $cookie = $log_entry[$#log_entry];   # cookie is last chunk in log entry
 
-		$time =~ s/:\d{2} -\d{4}$//g;
+		$time =~ s/:\d{2}:\d{2} -\d{4}$//g;
 		$cookies{$date}{$time}{$cookie}{num}++;   # count cookie instances
 	}
 
 
 	my @dates = &sort_dates('/', keys %cookies);
 	foreach my $date (@dates) {
-		unless ($conf{show_data} =~ /time/) {
+		unless ($conf{show_data} =~ /hour/) {
 			print "$date : "; 
 		}
-		my @times = &sort_times(':', keys %{ $cookies{$date} } );
+		#my @times = &sort_times(':', keys %{ $cookies{$date} } );
+		my @times = sort (keys %{ $cookies{$date} } );
 		foreach my $time (@times) {
-			if ($conf{show_data} =~ /time/) {
+			if ($conf{show_data} =~ /hour/) {
 				print "$date $time : ";
 			}
 			my @cookie_keys = keys %{ $cookies{$date}{$time} };
@@ -58,7 +59,7 @@ sub main {
 
 				print $conf{chart_char};
 			}
-			if ($conf{show_data} =~ /time/) {
+			if ($conf{show_data} =~ /hour/) {
 				print "\n";
 			}
 		}
@@ -135,7 +136,7 @@ sub sort_dates {
 }
 
 # first arg is delimeter for the second wich is an array of times in 
-# an expected format (HH$dlmMM) and return the group sorted from oldest to most recent.
+# an expected numbers and return the group sorted from oldest to most recent.
 sub sort_times {
 	my $dlm = shift;
 	my @times = ();
@@ -163,13 +164,6 @@ sub convert_date {
 	return("$year$month$day");
 }
 
-# converts date: DD/MM/YYYY to YYYYMMDD
-sub convert_time {
-	my ($dlm, $time) = @_;
-	my ($hour, $min) = split("$dlm", $time);
-	return("$hour$min");
-}
-
 
 # converts date: YYYYMMDD to DD/MM/YYYY
 sub convert_date_back {
@@ -179,13 +173,6 @@ sub convert_date_back {
 		$month = &convert_month_back($month);
 	}
 	return("$day$dlm$month$dlm$year");
-}
-
-# converts time: HHMMSS to HH$dlmMM$dlmSS 
-sub convert_time_back {
-	my ($dlm, $time) = @_;
-	my ($hour, $min) = unpack("a2" . "a2" , $time);
-	return("$hour$dlm$min");
 }
 
 
