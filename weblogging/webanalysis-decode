@@ -1,0 +1,31 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+my @unresolved=();
+my $debug;
+my @junk=();
+
+open (WORK, "./access.log")
+	or die "couldn't open ./access.log : $!\n";
+
+while (<WORK>)
+{
+        @junk = split(/ /, $_ );
+	@unresolved = splice(@junk, 6);
+	chomp (@unresolved);
+	$debug = `echo '@unresolved' >> /usr/local/weblogs/new/access.log.work`;
+}
+close WORK;
+
+$debug = `webalizer -d /usr/local/weblogs/new/access.log.work`;
+
+open(LOG, ">>./weblogs.log") 
+	or die "$!\n"; 
+print LOG $debug;
+close LOG;
+	
+
+# cleanup
+
+exit;

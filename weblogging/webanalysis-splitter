@@ -1,0 +1,47 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+my @unresolved=();
+my $debug;
+my @junk=();
+my $server;
+
+exit unless (-f "/usr/local/weblogs/split/access.log"); 
+$debug = `mv /usr/local/weblogs/split/access.log /usr/local/weblogs/split/access.log.tmp`;
+
+open (WORK, "/usr/local/weblogs/split/access.log.tmp")
+	or die "couldn't open /usr/local/weblogs/split/access.log.tmp : $!\n";
+
+while (<WORK>)
+{
+        @junk = split(/ /, $_ );
+	$server = $junk[4];
+	$server =~ s/\d+//g;
+	@unresolved = splice(@junk, 6);
+	system( "echo '@unresolved' >> /usr/local/weblogs.log" );
+	chomp (@unresolved);
+
+	unless (-d "/usr/local/weblogs/split/$server")
+        {
+                system("mkdir /usr/local/weblogs/split/$server")
+        }
+	$debug = `echo '@unresolved' | webalizer -o /usr/local/weblogs/split/$server/`;
+
+}
+close WORK;
+
+open(LOG, ">>/var/log/weblogs/split/weblogs.log") 
+	or die "$!\n"; 
+print LOG $debug;
+close LOG;
+	
+
+# cleanup
+
+$debug = `rm -f /usr/local/weblogs/split/access.log.tmp`;
+$debug = `rm -f /usr/local/weblogs/split/access.log.unresolved`;
+$debug = `rm -f /usr/local/weblogs/split/access.log.work`;
+sleep 1;
+
+exit;

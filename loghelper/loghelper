@@ -1,0 +1,98 @@
+#!/usr/bin/perl -w
+#
+# Helps you log errors from syslog
+# by day. Creates log filename using
+# host/facility to assist in logging
+# of remote hosts.
+#
+# Also compresses log files older
+# than one day with "-r" flag.
+#
+# Relies on the UNIX date command.
+#
+# -Nick/Rob 05/27/2000
+#
+
+use strict;
+
+
+if (@ARGV)
+{
+	if ($ARGV[0] eq '-r')
+	{
+		&rollover();
+		exit;
+	}
+
+	print "syntax : 'loghelper <-r, -h>'\n";
+	print "'-r' rolls logs over\n";
+	print "'-h' prints this screen\n";
+	print "no arguments puts loghelper in STDIN mode\n";
+	exit;
+}
+
+unless (<STDIN>)
+{	
+	&log( 'die', "no standard input" );
+}	
+
+while (<STDIN>)
+{
+	my $facility='';
+	my $hostname='';
+	my @junk = split(' ', $_);
+	system( "echo $junk[4] >> /var/log/loghelper.log" );
+	$hostname = $junk[4];
+	@junk = split(/\./, $junk[3]);
+	@junk = split('<', $junk[0]);
+	system( "echo '@junk' >> /var/log/loghelper.log" );
+	$facility = $junk[1];
+	unless (-d "/var/log/$hostname")
+	{
+		system("mkdir /var/log/$hostname")
+		or &log( 'die', "died making /var/log/$hostname" );
+	}
+	my $date = `date +%Y%m%d`;
+	chomp $date;
+	open(LOG, ">>/var/log/$hostname/$hostname.$facility.$date") 
+		or &log( 'die', "died opening log file : $!" ); 
+	print LOG $_
+		or &log( 'die', "died printing to log file : $!" );
+	close LOG
+		or &log( 'die', "died closing log file : $!" );
+}
+
+sub rollover
+{
+	my @varlog= `ls /var/log/`;
+	chomp (@varlog);
+	foreach my $logdir (@varlog)
+	{
+		next unless (-d "/var/log/$logdir");
+		my @files = `ls /var/log/$logdir`;
+		chomp (@files);
+		my @matches = grep {$_ =~ /\.\d{6}\d*$/} @files;
+        	@matches = grep {$_ =~ /\.\d{6}\d*$/} @files;
+        	foreach my $file (@matches)
+        	{
+               		my @junk = split (/\./, $file);
+			my $date = `date +%Y%m%d`;
+			chomp $date;
+                	next if ($date <= $junk[$#junk]);
+		      	system("gzip -f /var/log/$logdir/$file");
+        	}
+	}
+}
+
+sub log
+{
+	open(LOG, ">>/var/log/loghelper.log");
+	print LOG "$_[1]\n";
+	close LOG;
+	print "LOG: $_[1]\n";
+
+	if ( $_[0] eq 'die' )
+	{
+		die;
+	}
+}

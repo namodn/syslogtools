@@ -1,0 +1,18 @@
+#!/usr/bin/perl -w
+#
+# Webloghelper
+#
+
+use strict;
+
+while (<STDIN>)
+{
+	open(LOG, ">>/usr/local/weblogs/all/access.log") 
+		or die "$!\n"; 
+	print LOG $_;
+	close LOG;
+	open(LOG, ">>/usr/local/weblogs/split/access.log") 
+		or die "$!\n"; 
+	print LOG $_;
+	close LOG;
+}
