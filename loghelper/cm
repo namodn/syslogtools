@@ -1,0 +1,91 @@
+#!/usr/bin/perl -w
+#
+# (c)ookie (m)uncher
+#
+# by: Nick Jennings
+#
+
+use strict;
+
+&main();
+
+# load configuration options
+sub get_config {
+	return (
+		log_file => 'access.log',
+	);	
+}
+
+# main body of script
+sub main {
+	my %conf = &get_config();
+	my %cookies = {};   # keys are different cookies
+	my @log = &get_log_contents($conf{'log_file'});
+	# go through each entry in log and do stuff
+	foreach my $entry (@log) {
+		next if ($entry =~ /^$/);   # skip blank lines
+		my @log_entry = &split_log_entry($entry);   # split log entry into each chunk 
+		#print join(' | ', @log_entry), "\n\n";
+		my $cookie = $log_entry[$#log_entry];   # cookie is last chunk in log entry
+
+		$cookies{$cookie}{num}++;   # count cookie instances
+		#print "$cookie:  ";
+		#print "$cookies{$cookie}{num}\n\n";
+	}
+
+	my @cookie_keys = keys %cookies;
+	foreach my $cookie (@cookie_keys) {
+		next unless ($cookies{$cookie}{num});
+		print "cookie: $cookie, apeared $cookies{$cookie}{num} times\n";
+	}
+}
+
+
+# split log entry up and return an array of each chunk of data in line
+sub split_log_entry {
+	my $line = shift;
+	chomp $line;
+	my $c = 0;	# counter
+	my $dlm = '';	# delimeter
+	my $dlm_line = '';	# '|' delimited line
+
+	my @work = split(//, $line);
+
+	foreach my $char (@work) {
+		unless ($dlm) {
+			$char =~ s/ /|/g;
+			if ($char =~ /\[/) {
+				$char =~ s/\[/|/;	
+				$dlm = ']';
+			}
+			elsif ($char =~ /"/) {
+				$char =~ s/"/|/;
+				$dlm = '"';
+			}
+		}
+		else {
+			if ($char =~ /$dlm/) {
+				$char =~ s/$dlm/|/g;
+				$dlm = '';
+			}	
+		}
+
+		$dlm_line .= $char;
+	}
+
+	$dlm_line =~ s/\|+/|/g;
+	$dlm_line =~ s/\|$//g;
+	$dlm_line =~ s/^\|//g;
+	return ( split(/\|/, $dlm_line) );	
+
+}
+
+# open specified log file and return array of the logs data in lines.
+sub get_log_contents {
+	my $log_file = shift;
+	open (LOG, $log_file) or die "Couldn't open $log_file : $!\n";
+	my @tmp = <LOG>;
+	close LOG;
+	return @tmp;
+}
+
