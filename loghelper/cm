@@ -14,6 +14,8 @@ sub get_config {
 	return (
 		log_file => 'access.log',
 		chart_char => '*',
+		hist_file => 'cm.hist', 
+		show_data => 'date time',
 	);	
 }
 
@@ -31,26 +33,37 @@ sub main {
 		my ($date, $time) = split(/:/, $log_entry[3], 2);
 		my $cookie = $log_entry[$#log_entry];   # cookie is last chunk in log entry
 
-		$cookies{$date}{$cookie}{num}++;   # count cookie instances
+		$time =~ s/:\d{2} -\d{4}$//g;
+		$cookies{$date}{$time}{$cookie}{num}++;   # count cookie instances
 	}
 
-	my @dates = &sort_dates('/', keys %cookies);
 
+	my @dates = &sort_dates('/', keys %cookies);
 	foreach my $date (@dates) {
-		my @cookie_keys = keys %{ $cookies{$date} };
-		#print join("\n", @cookie_keys), "\n";
-		foreach my $cookie (@cookie_keys) {
-			next unless ($cookies{$date}{$cookie}{num});
-			#print "cookie: $cookie, apeared $cookies{$date}{$cookie}{num} times\n";
+		unless ($conf{show_data} =~ /time/) {
+			print "$date : "; 
 		}
-		#print "total: ", $#cookie_keys + 1, " unique visitors on $date\n\n";
-		print "$date: ", $#cookie_keys + 1, " ";
-		for (my $c = 0; $c <= $#cookie_keys; $c++) {
-			print $conf{chart_char};
+		my @times = &sort_times(':', keys %{ $cookies{$date} } );
+		foreach my $time (@times) {
+			if ($conf{show_data} =~ /time/) {
+				print "$date $time : ";
+			}
+			my @cookie_keys = keys %{ $cookies{$date}{$time} };
+			foreach my $cookie (@cookie_keys) {
+				next unless ($cookies{$date}{$time}{$cookie}{num});
+				# scalar contains num of occurences for this date, already on file
+				#my $previous_cookie_visits = &load_history_file($date, $cookie);
+				# adds that num to the current instances read
+				#$cookies{$date}{$cookie}{num} += $previous_cookie_visits;
+
+				print $conf{chart_char};
+			}
+			if ($conf{show_data} =~ /time/) {
+				print "\n";
+			}
 		}
 		print "\n";
 	}
-
 }
 
 
@@ -121,6 +134,25 @@ sub sort_dates {
 	return(@sorted_dates);
 }
 
+# first arg is delimeter for the second wich is an array of times in 
+# an expected format (HH$dlmMM) and return the group sorted from oldest to most recent.
+sub sort_times {
+	my $dlm = shift;
+	my @times = ();
+	foreach my $time (@_) {
+	 	$time = &convert_time($dlm, $time);   # converts time for numeric test
+		push @times, $time;
+	}
+	my @sorted_times = ();
+	foreach my $time (sort @times) {
+		# converts time back from numeric test
+	 	$time = &convert_time_back($dlm, $time);   
+		push @sorted_times, $time;
+	}
+	
+	return(@sorted_times);
+}
+
 # converts date: DD/MM/YYYY to YYYYMMDD
 sub convert_date {
 	my ($dlm, $date) = @_;
@@ -131,6 +163,14 @@ sub convert_date {
 	return("$year$month$day");
 }
 
+# converts date: DD/MM/YYYY to YYYYMMDD
+sub convert_time {
+	my ($dlm, $time) = @_;
+	my ($hour, $min) = split("$dlm", $time);
+	return("$hour$min");
+}
+
+
 # converts date: YYYYMMDD to DD/MM/YYYY
 sub convert_date_back {
 	my ($dlm, $date) = @_;
@@ -139,6 +179,13 @@ sub convert_date_back {
 		$month = &convert_month_back($month);
 	}
 	return("$day$dlm$month$dlm$year");
+}
+
+# converts time: HHMMSS to HH$dlmMM$dlmSS 
+sub convert_time_back {
+	my ($dlm, $time) = @_;
+	my ($hour, $min) = unpack("a2" . "a2" , $time);
+	return("$hour$dlm$min");
 }
 
 
