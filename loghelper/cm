@@ -34,8 +34,7 @@ sub main {
 		$cookies{$date}{$cookie}{num}++;   # count cookie instances
 	}
 
-	my @dates = keys %cookies;
-	#my @dates = &order_dates(keys %cookies);
+	my @dates = &sort_dates('/', keys %cookies);
 
 	foreach my $date (@dates) {
 		my @cookie_keys = keys %{ $cookies{$date} };
@@ -46,7 +45,7 @@ sub main {
 		}
 		#print "total: ", $#cookie_keys + 1, " unique visitors on $date\n\n";
 		print "$date: ", $#cookie_keys + 1, " ";
-		for (my $c = 0; $c <= $#cookie_keys + 1; $c++) {
+		for (my $c = 0; $c <= $#cookie_keys; $c++) {
 			print $conf{chart_char};
 		}
 		print "\n";
@@ -100,20 +99,48 @@ sub get_log_contents {
 	open (LOG, $log_file) or die "Couldn't open $log_file : $!\n";
 	my @tmp = <LOG>;
 	close LOG;
-	return @tmp;
+	return(@tmp);
 }
 
-# take a group of dates in an expected format (DD/MM/YYYY)
-# and return the group ordered from oldest to most recent.
-sub order_dates {
-	my @dates = @_;
-	foreach my $date (@dates) {
-		my ($day, $month, $year) = $date;
-		unless ($month =~ /^\d{2}$/) {
-			$month = &convert_month($month);	
-		}
+# first arg is delimeter for the second wich is an array of dates in 
+# an expected format (DD$dlmMM$dlmYYYY) and return the group sorted from oldest to most recent.
+sub sort_dates {
+	my $dlm = shift;
+	my @dates = ();
+	foreach my $date (@_) {
+	 	$date = &convert_date($dlm, $date);   # converts date to for numeric test
+		push @dates, $date;
 	}
+	my @sorted_dates = ();
+	foreach my $date (sort @dates) {
+		# converts date back from numeric test
+	 	$date = &convert_date_back($dlm, $date);   
+		push @sorted_dates, $date;
+	}
+	
+	return(@sorted_dates);
 }
+
+# converts date: DD/MM/YYYY to YYYYMMDD
+sub convert_date {
+	my ($dlm, $date) = @_;
+	my ($day, $month, $year) = split("$dlm", $date);
+	unless ($month =~ /^\d{2}$/) {
+		$month = &convert_month($month);	
+	}
+	return("$year$month$day");
+}
+
+# converts date: YYYYMMDD to DD/MM/YYYY
+sub convert_date_back {
+	my ($dlm, $date) = @_;
+	my ($year, $month, $day) = unpack("a4" . "a2" . "a2", $date);
+	if ($month =~ /^\d{2}$/) {
+		$month = &convert_month_back($month);
+	}
+	return("$day$dlm$month$dlm$year");
+}
+
 
 # converts the standard 3 letter abreviation for the month into its 
 # numerical equivelant
@@ -134,3 +161,22 @@ sub convert_month {
         return ($month);
 }
 
+
+# converts the numerical 2 digit value to the standard 3 letter
+# equivelant 
+sub convert_month_back {
+        my $month = shift;
+        if      ($month =~ /^01$/)     { $month = 'Jan'; }      
+        elsif   ($month =~ /^02$/)     { $month = 'Feb'; }      
+        elsif   ($month =~ /^03$/)     { $month = 'Mar'; }      
+        elsif   ($month =~ /^04$/)     { $month = 'Apr'; }      
+        elsif   ($month =~ /^05$/)     { $month = 'May'; }      
+        elsif   ($month =~ /^06$/)     { $month = 'Jun'; }      
+        elsif   ($month =~ /^07$/)     { $month = 'Jul'; }      
+        elsif   ($month =~ /^08$/)     { $month = 'Aug'; }      
+        elsif   ($month =~ /^09$/)     { $month = 'Sep'; }      
+        elsif   ($month =~ /^10$/)     { $month = 'Oct'; }      
+        elsif   ($month =~ /^11$/)     { $month = 'Nov'; }      
+        elsif   ($month =~ /^12$/)     { $month = 'Dec'; }      
+        return ($month);
+}
