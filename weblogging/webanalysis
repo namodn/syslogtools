@@ -2,7 +2,7 @@
 
 use strict;
 
-my @unresolved=();
+my @clf=();
 my $debug;
 my @junk=();
 
@@ -15,15 +15,18 @@ open (WORK, "/usr/local/weblogs/all/access.log.tmp")
 while (<WORK>)
 {
         @junk = split(/ /, $_ );
-	@unresolved = splice(@junk, 6);
-	chomp (@unresolved);
-	$debug = `echo '@unresolved' >> /usr/local/weblogs/all/access.log.unresolved`;
+	@clf = splice(@junk, 6);
+	chomp (@clf);
+	open (CLF, ">>/usr/local/weblogs/all/access.log.clf")
+	 or die "couldn't open /usr/local/weblogs/all/access.log.clf : $!\n";
+	   print CLF join(" ", @clf), "\n"; 
+	close (CLF);
+
 }
 close WORK;
 
-#$debug = `/usr/local/sbin/logresolve < /usr/local/weblogs/all/access.log.unresolved > /usr/local/weblogs/all/access.log.work`;
-$debug = `mv -f /usr/local/weblogs/all/access.log.unresolved /usr/local/weblogs/all/access.log.work`;
-$debug = `webalizer -d /usr/local/weblogs/all/access.log.work`;
+$debug = `/usr/local/sbin/cm >> /home/rhelmer/cm.log`;
+$debug = `webalizer -d /usr/local/weblogs/all/access.log.clf`;
 
 #open(LOG, ">>/var/log/weblogs/weblogs.log") 
 #	or die "$!\n"; 
@@ -34,8 +37,7 @@ $debug = `webalizer -d /usr/local/weblogs/all/access.log.work`;
 # cleanup
 
 $debug = `rm -f /usr/local/weblogs/all/access.log.tmp`;
-$debug = `rm -f /usr/local/weblogs/all/access.log.unresolved`;
-$debug = `rm -f /usr/local/weblogs/all/access.log.work`;
+$debug = `rm -f /usr/local/weblogs/all/access.log.clf`;
 sleep 1;
 
 exit;
