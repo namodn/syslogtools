@@ -33,6 +33,8 @@ sub main {
 		my ($date, $time) = split(/:/, $log_entry[3], 2);
 		my $cookie = $log_entry[$#log_entry];   # cookie is last chunk in log entry
 
+		next unless ($cookie =~ /^\d+\.\d+\.\d+\./); 
+		#$cookie =~ s/^\d+\.\d+\.\d+\.//g;
 		$time =~ s/:\d{2}:\d{2} -\d{4}$//g;
 		$cookies{$date}{$time}{$cookie}{num}++;   # count cookie instances
 	}
