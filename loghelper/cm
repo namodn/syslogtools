@@ -15,8 +15,7 @@ sub get_config {
 		log_file => 'access.log',	# name of log file to read
 		chart_char => '*',		# character to use for chart counter
 		hist_file => 'cm.hist',		# history file 
-		show_data => 'date',	# date cant be removed, hour is optional
-		ignore => [ 'Keynote-Perspective', 'Sesame' ], 
+		ignore => [ 'Keynote-Perspective', 'IsItSesame', 'GET /check.html' ], 
 	);	
 }
 
@@ -30,7 +29,8 @@ sub main {
 	foreach my $entry (@log) {
 		next if ($entry =~ /^$/);   # skip blank lines
 		my $ignore = '';
-		foreach my $pat ($conf{'ignore'}) {
+		my @pats = @{ $conf{'ignore'} };
+		foreach my $pat (@pats) {
 			$ignore = '1' if ($entry =~ /$pat/);
 		}
 		next if ($ignore);
@@ -45,47 +45,64 @@ sub main {
 		$cookies{$date}{$time}{$cookie}{num}++;   # count cookie instances
 	}
 
-	if ($conf{show_data} =~ /hour/) {
-		print "   date    hour  #\n";
-		print "   ----    ----  -\n";
-	}
-	else {
-		print "   date       #\n";
-		print "   ----       -\n";
-	}
 
+	my %months;  # key is month, value is total cookies
+	print "\n";
+	print "   day        # of unique visitors\n";
+	print "   ---        --------------------\n";
 	my @dates = &sort_dates('/', keys %cookies);
 	foreach my $date (@dates) {
-		unless ($conf{show_data} =~ /hour/) {
-			print "$date : "; 
-		}
+		my ($junk, $month) = split(/\//, $date, 2);
+		print "$date : "; 
 		my @times = sort (keys %{ $cookies{$date} } );
 		my $daily_total = 0;
 		foreach my $time (@times) {
 			my @cookie_keys = keys %{ $cookies{$date}{$time} };
-			if ($conf{show_data} =~ /hour/) {
-				print "$date $time : ";
-				print $#cookie_keys + 1, "\t";
-				foreach my $cookie (@cookie_keys) {
-					print $conf{chart_char};
-				}
-				print "\n";
-			}
-			else {
-				$daily_total = $#cookie_keys + 1 + $daily_total;
+			$daily_total = $#cookie_keys + 1 + $daily_total;
+		}
+
+		print "$daily_total\t";
+		# add daily total to monthly total
+		$months{$month} += $daily_total;
+
+		foreach my $time (@times) {
+			my @cookie_keys = keys %{ $cookies{$date}{$time} };
+			foreach my $cookie (@cookie_keys) {
+				print $conf{chart_char};
 			}
 		}
-		unless ($conf{show_data} =~ /hour/) {
-			print "$daily_total\t";
-			foreach my $time (@times) {
-				my @cookie_keys = keys %{ $cookies{$date}{$time} };
-				foreach my $cookie (@cookie_keys) {
-					print $conf{chart_char};
-				}
+		print "\n";
+	}
+
+	print "\n";
+	print "   day     hour  # of unique visitors\n";
+	print "   ---     ----  --------------------\n";
+	@dates = &sort_dates('/', keys %cookies);
+	foreach my $date (@dates) {
+		my ($month, $junk) = split(/\//, $date, 2);
+		my @times = sort (keys %{ $cookies{$date} } );
+		my $daily_total = 0;
+		foreach my $time (@times) {
+			my @cookie_keys = keys %{ $cookies{$date}{$time} };
+			print "$date $time : ";
+			print $#cookie_keys + 1, "\t";
+			foreach my $cookie (@cookie_keys) {
+				print $conf{chart_char};
 			}
 			print "\n";
 		}
 	}
+
+	print "\n";
+	print " month     # of unique visitors\n";
+	print " -----     --------------------\n";
+	my @sort_months = &sort_months('/', keys %months);
+	foreach my $month (@sort_months) {
+		next unless ($months{$month});
+		print "$month : $months{$month}\n";
+	}
+
+	print "\n";
 }
 
 
@@ -155,6 +172,25 @@ sub sort_dates {
 	
 	return(@sorted_dates);
 }
+
+sub sort_months {
+	my $dlm = shift;
+	my @dates = ();
+	foreach my $date (@_) {
+		my ($month, $year) = split(/$dlm/, $date);
+	 	$month = &convert_month($month);   # converts date to for numeric test
+		push @dates, "$year$month";
+	}
+	my @sorted_dates = ();
+	foreach my $date (sort @dates) {
+		# converts date back from numeric test
+		my ($year, $month) = unpack( "a4" . "a2", $date); 
+	 	$month = &convert_month_back($month);   
+		push @sorted_dates, "$month$dlm$year";
+	}
+	return(@sorted_dates);
+}
+
 
 # first arg is delimeter for the second wich is an array of times in 
 # an expected numbers and return the group sorted from oldest to most recent.
